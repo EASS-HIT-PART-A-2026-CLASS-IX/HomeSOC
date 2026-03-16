@@ -307,10 +307,8 @@ Tests cover: API key auth (accept/reject), insert_events non-mutation, per-sourc
 
 ## Roadmap
 
-- [x] API key authentication on agent/destructive endpoints
 - [ ] Windows agent (Event Log, Sysmon, WMI, netstat)
 - [ ] Linux agent (auditd, syslog)
-- [ ] Event retention enforcement (auto-cleanup)
 - [ ] Alert notification integrations (Slack, Discord, email)
 - [ ] Agent auto-update mechanism
 - [ ] TLS/mTLS between agents and backend

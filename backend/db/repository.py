@@ -265,6 +265,32 @@ async def clear_alerts() -> int:
     return count
 
 
+# ── Retention ──────────────────────────────────────────────────────────
+
+
+async def purge_old_events(retention_days: int) -> int:
+    """Delete events older than retention_days. Returns number of rows removed."""
+    db = await get_db()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+    cursor = await db.execute(
+        "DELETE FROM events WHERE timestamp < ?", [cutoff]
+    )
+    await db.commit()
+    return cursor.rowcount
+
+
+async def purge_old_alerts(retention_days: int) -> int:
+    """Delete resolved/false-positive alerts older than retention_days."""
+    db = await get_db()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+    cursor = await db.execute(
+        "DELETE FROM alerts WHERE created_at < ? AND status IN ('resolved', 'false_positive')",
+        [cutoff],
+    )
+    await db.commit()
+    return cursor.rowcount
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────
 
 

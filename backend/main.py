@@ -35,6 +35,27 @@ async def _stale_agent_checker() -> None:
             await manager.broadcast({"type": "agent_status", "data": {"refresh": True}})
 
 
+_RETENTION_CHECK_INTERVAL = 3600  # Run once per hour
+
+
+async def _retention_enforcer() -> None:
+    """Background task that purges events and resolved alerts past retention."""
+    while True:
+        await asyncio.sleep(_RETENTION_CHECK_INTERVAL)
+        try:
+            events_purged = await repository.purge_old_events(settings.event_retention_days)
+            alerts_purged = await repository.purge_old_alerts(settings.event_retention_days)
+            if events_purged or alerts_purged:
+                logger.info(
+                    "Retention cleanup: purged %d event(s) and %d alert(s) older than %d day(s)",
+                    events_purged,
+                    alerts_purged,
+                    settings.event_retention_days,
+                )
+        except Exception:
+            logger.exception("Retention enforcement failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -45,19 +66,22 @@ async def lifespan(app: FastAPI):
     pipeline = IngestionPipeline(engine)
     app.state.pipeline = pipeline
 
-    # Start background stale-agent checker
+    # Start background tasks
     checker_task = asyncio.create_task(_stale_agent_checker())
+    retention_task = asyncio.create_task(_retention_enforcer())
 
     api_key = settings.ensure_api_key()
     print(f"[HomeSOC] Backend started on {settings.host}:{settings.port}")
     print(f"[HomeSOC] Database: {settings.db_path}")
     print(f"[HomeSOC] Detection rules loaded: {len(engine.rules)}")
+    print(f"[HomeSOC] Event retention: {settings.event_retention_days} day(s)")
     print(f"[HomeSOC] API Key: {api_key}")
     print(f"[HomeSOC]   Set HOMESOC_API_KEY env var to use a fixed key")
     print(f"[HomeSOC]   Agents must send X-API-Key header on all requests")
     yield
     # Shutdown
     checker_task.cancel()
+    retention_task.cancel()
     await close_db()
     print("[HomeSOC] Backend shut down")
 
