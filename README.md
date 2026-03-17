@@ -7,6 +7,7 @@
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
@@ -53,6 +54,8 @@ A real-time dashboard gives you full visibility into what's happening across you
 
 ```
 HomeSoc/
+├── docker-compose.yml    # Docker Compose for backend + dashboard
+├── .dockerignore         # Files excluded from Docker builds
 ├── shared/               # Pydantic schemas, enums, protocol models
 │   ├── schemas.py        # NormalizedEvent, Alert, AgentInfo
 │   ├── enums.py          # Platform, EventCategory, Severity
@@ -88,20 +91,52 @@ HomeSoc/
 
 ## Getting Started
 
-### Prerequisites
+### Quick Start with Docker (Recommended)
+
+The fastest way to run HomeSOC (backend + dashboard):
+
+```bash
+docker compose up --build
+```
+
+This starts:
+- **Backend** at `http://localhost:8443`
+- **Dashboard** at `http://localhost:8080`
+
+The dashboard proxies API and WebSocket requests to the backend automatically.
+
+To set a fixed API key, create a `.env` file in the project root:
+
+```
+HOMESOC_API_KEY=your-secret-key-here
+```
+
+To stop everything:
+
+```bash
+docker compose down
+```
+
+> **Note:** Docker runs the backend and dashboard only. Agents still run natively on target machines (they need OS-level access for security monitoring).
+
+---
+
+### Manual Setup
+
+#### Prerequisites
 
 - **Python 3.12+**
 - **Node.js 18+**
 - **macOS 13+** (for the macOS agent — `eslogger` requires Ventura or later)
 
-### 1. Install Backend Dependencies
+#### 1. Install Backend Dependencies
 
 ```bash
 cd backend
 pip3 install -r requirements.txt
 ```
 
-### 2. Start the Backend
+#### 2. Start the Backend
 
 ```bash
 cd backend
@@ -124,7 +159,7 @@ export HOMESOC_API_KEY="your-secret-key-here"
 
 API docs are available at `http://localhost:8443/docs`.
 
-### 3. Start the Dashboard
+#### 3. Start the Dashboard
 
 ```bash
 cd dashboard
@@ -134,7 +169,7 @@ npm run dev
 
 Open **http://localhost:5173** in your browser.
 
-### 4. Run the macOS Agent
+#### 4. Run the macOS Agent
 
 > Requires `sudo` and **Full Disk Access** for your terminal app.
 > Grant it in: **System Settings → Privacy & Security → Full Disk Access**
@@ -152,7 +187,7 @@ Optional flags:
 sudo python3 main.py --agent-id MyMacBook --backend-url http://192.168.1.100:8443 --api-key <key>
 ```
 
-### 5. Generate Test Events (Optional)
+#### 5. Generate Test Events (Optional)
 
 If you want to see the dashboard in action without running a real agent:
 

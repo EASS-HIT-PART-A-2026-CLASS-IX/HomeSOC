@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8443:8443"
+    volumes:
+      - homesoc-data:/app/backend/data
+    environment:
+      - HOMESOC_HOST=0.0.0.0
+      - HOMESOC_PORT=8443
+      - HOMESOC_CORS_ORIGINS=["http://localhost:5173","http://localhost:3000","http://localhost:8080"]
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  homesoc-data:
