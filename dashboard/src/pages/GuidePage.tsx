@@ -49,7 +49,7 @@ const sections: GuideSection[] = [
     intro:
       "HomeSOC (Home Security Operations Center) is a self-hosted system that monitors the security of your local devices in real time. Think of it as a mini enterprise security platform — but designed for your home network.",
     content: [
-      "HomeSOC watches what happens on your computers (macOS and Windows) by running lightweight **agents** that collect security-relevant events — things like processes being launched, network connections being made, files being created, and login attempts.",
+      "HomeSOC watches what happens on your Mac by running a lightweight **agent** that collects security-relevant events — things like processes being launched, network connections being made, files being created, and login attempts.",
       "Those events are sent to a central **backend server** running on your machine. The backend stores everything in a local database, runs **detection rules** to spot suspicious activity, and streams results to a live **dashboard** you can view in your browser.",
       "Everything runs locally on your network. No data leaves your home. There are no cloud dependencies, no subscriptions, and no third parties involved.",
       "The system is built with three main pieces:\n• **Agents** — Small Python programs that run on each device you want to monitor.\n• **Backend** — A FastAPI server that receives events, stores them, runs detections, and serves the dashboard API.\n• **Dashboard** — A React web app that shows you everything in real time.",
@@ -65,7 +65,7 @@ const sections: GuideSection[] = [
       },
       {
         q: "What devices can HomeSOC monitor?",
-        a: "Currently macOS and Windows. The macOS agent uses Apple's Endpoint Security framework (eslogger) and network monitoring (lsof). The Windows agent uses the Windows Event Log, WMI, and netstat. Linux support can be added in the future.",
+        a: "macOS. The agent uses Apple's Endpoint Security framework (eslogger) for process, file, and auth events, and lsof for network connection monitoring.",
       },
       {
         q: "Is this a replacement for antivirus software?",
@@ -86,7 +86,7 @@ const sections: GuideSection[] = [
       "**Event Timeline** — The area chart shows event volume over the last 60 minutes, broken into one-minute buckets. The blue area is total events, the red area is high/critical severity events. If the chart is flat, it means no events arrived in that time window. Spikes indicate bursts of activity — worth investigating if they're red.",
       "**Live Feed** — The left panel shows the most recent events as they arrive in real time. Each line shows:\n• A colored dot for severity (green = info, blue = low, yellow = medium, red = high, dark red = critical).\n• A timestamp.\n• A category tag (PROC, NET, FILE, AUTH, etc.).\n• A summary of what happened.\nThis is the raw pulse of your network — useful for watching activity as it happens.",
       "**Alerts Panel** — The right panel shows active (open) alerts. Each alert has a severity-colored left border, the rule that triggered it, a timestamp, and a description of what was detected. You can acknowledge alerts directly from here.",
-      "**Agent Status** — Below the alerts panel, you can see which agents are online or offline, their platform (macOS/Windows), and hostname.",
+      "**Agent Status** — Below the alerts panel, you can see which agents are online or offline and their hostname.",
       "**Category Breakdown** — The bar chart at the bottom shows how events are distributed across categories (Process, Network, File, Auth, etc.) over the last 24 hours. This helps you understand what type of activity dominates your environment.",
     ],
     faqs: [
@@ -182,9 +182,8 @@ const sections: GuideSection[] = [
     intro:
       "Agents are the lightweight programs that run on each device you want to monitor. They collect security events and send them to the backend.",
     content: [
-      "**What agents do** — Each agent runs on a specific device (your MacBook, Windows PC, etc.) and continuously collects security-relevant data using native OS tools. It normalizes everything into a common event format and sends batches of events to the backend server over HTTP.",
+      "**What agents do** — The agent runs on your Mac and continuously collects security-relevant data using native macOS tools. It normalizes everything into a common event format and sends batches of events to the backend server over HTTP.",
       "**macOS agent** — Uses two collectors:\n• **eslogger** — Apple's Endpoint Security framework. Monitors process executions, file operations, authentication attempts, and signals. This is the most detailed data source. Requires running with `sudo` and the terminal app needs Full Disk Access.\n• **Network (lsof)** — Polls active network connections every 15 seconds. Shows which processes are connecting to which IP addresses and ports.",
-      "**Windows agent** — Uses three collectors:\n• **Event Log** — Reads the Windows Security and System event logs for login attempts, privilege use, and system changes.\n• **WMI** — Monitors process creation events in real time via Windows Management Instrumentation.\n• **Netstat** — Polls active network connections and maps them to processes.",
       "**Agent status** — Each agent sends a heartbeat to the backend every 30 seconds. If no heartbeat is received for 60 seconds, the agent is marked offline. The green pulsing dot means online; gray means offline.",
       "**Buffering** — If the backend goes down, agents buffer events locally (up to 100,000 events). When the backend comes back, the agent drains the backlog automatically. No events are lost during temporary outages.",
       "**Removing agents** — Click the X button next to an agent to remove it from the backend. This deletes the agent's registration but does not stop the agent process itself. If the agent is still running, it will re-register on its next heartbeat.",
@@ -192,7 +191,7 @@ const sections: GuideSection[] = [
     faqs: [
       {
         q: "How do I start the macOS agent?",
-        a: "Open a terminal and run:\n\n  cd agents/macos\n  sudo python main.py\n\nYou need sudo because eslogger requires root access. Your terminal app also needs Full Disk Access (System Settings → Privacy & Security → Full Disk Access). You can optionally pass --backend-url and --agent-id flags.",
+        a: "Open a terminal and run:\n\n  cd agents/macos\n  sudo python main.py --backend-url http://localhost:8443 --agent-id <your-agent-id> --api-key <your-api-key>\n\nThe easiest way is to add the agent on the Agents page and click the Setup button — it shows the exact command with your API key pre-filled. You need sudo because eslogger requires root access. Your terminal app also needs Full Disk Access (System Settings → Privacy & Security → Full Disk Access).",
       },
       {
         q: "Why does the agent need sudo / root access?",
@@ -234,7 +233,7 @@ const sections: GuideSection[] = [
       },
       {
         q: "What is a YAML rule file structure?",
-        a: "Each file contains a 'rules' array. Each rule has:\n• id — Unique identifier.\n• name — Human-readable name.\n• description — What it detects.\n• severity — info / low / medium / high / critical.\n• type — 'single' or 'threshold'.\n• platform — Which OS (macos, windows, or null for any).\n• conditions — Field matching criteria.\n• window_seconds & threshold — Only for threshold rules.",
+        a: "Each file contains a 'rules' array. Each rule has:\n• id — Unique identifier.\n• name — Human-readable name.\n• description — What it detects.\n• severity — info / low / medium / high / critical.\n• type — 'single' or 'threshold'.\n• platform — 'macos' or null (null means applies to all).\n• conditions — Field matching criteria.\n• window_seconds & threshold — Only for threshold rules.",
       },
       {
         q: "Why did a rule trigger when the activity was legitimate?",
@@ -387,7 +386,7 @@ const sections: GuideSection[] = [
     intro:
       "Understanding how data flows through HomeSOC from collection to visualization.",
     content: [
-      "**End-to-end flow:**\n1. An agent collector (eslogger, lsof, Event Log, etc.) observes a system event.\n2. The collector normalizes it into a NormalizedEvent — a common format with fields for process, file, network, and auth data.\n3. The event is added to the agent's transport buffer.\n4. When the buffer reaches 100 events or 5 seconds elapse, the agent POSTs the batch to the backend's /api/v1/events endpoint.\n5. The backend stores events in SQLite.\n6. The detection engine evaluates each event against all loaded rules.\n7. If a rule matches, an alert is created and stored.\n8. Both events and alerts are broadcast via WebSocket to connected dashboards.\n9. The dashboard updates the Live Feed, Timeline, and Alert Panel in real time.",
+      "**End-to-end flow:**\n1. An agent collector (eslogger or lsof) observes a system event on your Mac.\n2. The collector normalizes it into a NormalizedEvent — a common format with fields for process, file, network, and auth data.\n3. The event is added to the agent's transport buffer.\n4. When the buffer reaches 100 events or 5 seconds elapse, the agent POSTs the batch to the backend's /api/v1/events endpoint.\n5. The backend stores events in SQLite.\n6. The detection engine evaluates each event against all loaded rules.\n7. If a rule matches, an alert is created and stored.\n8. Both events and alerts are broadcast via WebSocket to connected dashboards.\n9. The dashboard updates the Live Feed, Timeline, and Alert Panel in real time.",
       "**The NormalizedEvent** — This is the universal event format. Every collector on every platform converts its raw data into this format. Key fields:\n• id, timestamp, agent_id, platform, category, event_type, severity\n• Process fields: process_name, pid, ppid, path, user, args, hash\n• File fields: file_path, file_action\n• Network fields: src_ip, src_port, dst_ip, dst_port, protocol, dns_query\n• Auth fields: auth_user, auth_method, auth_success\n• raw — The original unmodified data for forensic analysis",
       "**Batching & reliability** — Agents don't send events one at a time. They batch them (100 per batch by default) and send every 5 seconds. If the backend is unreachable, events stay in the local buffer (up to 100,000) and are drained when connectivity returns. This ensures no data loss during backend downtime.",
       "**Detection pipeline** — The detection engine is synchronous and runs inline with ingestion. Every event passes through every rule. This is efficient enough for home-scale traffic (hundreds of events per second). Rules are loaded from YAML files on backend startup.",
@@ -395,7 +394,7 @@ const sections: GuideSection[] = [
     faqs: [
       {
         q: "What is the NormalizedEvent format?",
-        a: "It's a universal schema that all events are converted into, regardless of their source. A macOS eslogger event and a Windows Event Log entry both become NormalizedEvents with the same field structure. This allows the detection engine and dashboard to work identically across platforms.",
+        a: "It's a universal schema that all events are converted into, regardless of which collector produced them. A process event from eslogger and a network event from lsof both become NormalizedEvents with the same field structure. This allows the detection engine and dashboard to process all event types consistently.",
       },
       {
         q: "What happens if the backend crashes?",
@@ -467,14 +466,12 @@ function FAQItem({ faq }: { faq: FAQ }) {
   );
 }
 
-function SectionCard({ section }: { section: GuideSection }) {
-  const [expanded, setExpanded] = useState(false);
-
+function SectionCard({ section, expanded, onToggle }: { section: GuideSection; expanded: boolean; onToggle: () => void }) {
   return (
     <div id={section.id} className="bg-soc-card border border-soc-border rounded-xl overflow-hidden">
       {/* Header — always visible */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={onToggle}
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-soc-surface/30 transition-colors"
       >
         <span className="text-soc-accent">{section.icon}</span>
@@ -539,6 +536,15 @@ function renderBlock(text: string): React.ReactNode {
 /* ────────────────────────────── Page ────────────────────────────── */
 
 export function GuidePage() {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const jumpTo = (id: string) => {
+    setOpenId(id);
+    setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
   return (
     <div className="max-w-3xl space-y-4">
       {/* Page header */}
@@ -561,21 +567,26 @@ export function GuidePage() {
         </h3>
         <div className="flex flex-wrap gap-2">
           {sections.map((s) => (
-            <a
+            <button
               key={s.id}
-              href={`#${s.id}`}
+              onClick={() => jumpTo(s.id)}
               className="flex items-center gap-1.5 text-xs text-soc-muted hover:text-soc-accent px-2.5 py-1.5 rounded-lg border border-soc-border hover:border-soc-accent/40 transition-colors"
             >
               {s.icon}
               {s.title.replace(/ Page$/, "")}
-            </a>
+            </button>
           ))}
         </div>
       </div>
 
       {/* Sections */}
       {sections.map((section) => (
-        <SectionCard key={section.id} section={section} />
+        <SectionCard
+          key={section.id}
+          section={section}
+          expanded={openId === section.id}
+          onToggle={() => setOpenId(openId === section.id ? null : section.id)}
+        />
       ))}
     </div>
   );

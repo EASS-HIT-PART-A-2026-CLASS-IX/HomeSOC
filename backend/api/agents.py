@@ -88,6 +88,26 @@ async def deregister_agent(body: dict) -> dict:
     return {"status": "offline", "agent_id": agent_id}
 
 
+@router.post("/agents")
+async def create_agent(reg: AgentRegistration) -> dict:
+    """Manually register an agent from the dashboard."""
+    existing = await repository.get_agent_by_id(reg.agent_id)
+    if existing:
+        raise HTTPException(status_code=409, detail="Agent ID already exists")
+    agent = {
+        "id": reg.agent_id,
+        "hostname": reg.hostname,
+        "platform": reg.platform,
+        "ip_address": reg.ip_address,
+        "version": reg.version,
+        "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+        "status": "offline",
+    }
+    await repository.upsert_agent(agent)
+    await manager.broadcast({"type": "agent_status", "data": agent})
+    return {"status": "registered", "agent_id": reg.agent_id}
+
+
 @router.get("/agents")
 async def list_agents() -> list[dict]:
     return await repository.get_agents()

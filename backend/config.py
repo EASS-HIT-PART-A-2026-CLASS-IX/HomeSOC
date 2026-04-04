@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     # Auto-generated on first run if not set via HOMESOC_API_KEY env var.
     api_key: str = ""
 
+    # JWT settings for dashboard user auth
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 30
+
+    # Redis settings
+    redis_url: str = "redis://localhost:6379/0"
+
     model_config = {"env_prefix": "HOMESOC_"}
 
     def ensure_api_key(self) -> str:
@@ -26,6 +34,12 @@ class Settings(BaseSettings):
         if not self.api_key:
             self.api_key = secrets.token_urlsafe(32)
         return self.api_key
+
+    def ensure_jwt_secret(self) -> str:
+        """Return the JWT secret, generating one if empty."""
+        if not self.jwt_secret:
+            self.jwt_secret = secrets.token_urlsafe(32)
+        return self.jwt_secret
 
 
 settings = Settings()

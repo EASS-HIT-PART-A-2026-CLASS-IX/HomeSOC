@@ -72,6 +72,15 @@ CREATE_TABLES = [
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        hashed_password TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'viewer',
+        created_at TEXT DEFAULT (datetime('now'))
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS detection_rules (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,

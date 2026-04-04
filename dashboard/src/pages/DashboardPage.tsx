@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDashboardSummary } from "../hooks/useEvents";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { StatCards } from "../components/dashboard/StatCards";
@@ -6,14 +7,43 @@ import { AlertsPanel } from "../components/dashboard/AlertsPanel";
 import { AgentStatus } from "../components/dashboard/AgentStatus";
 import { LiveFeed } from "../components/dashboard/LiveFeed";
 import { CategoryBreakdown } from "../components/dashboard/CategoryBreakdown";
+import { api } from "../api/client";
 
 export function DashboardPage() {
-  const { summary } = useDashboardSummary();
+  const { summary, refresh } = useDashboardSummary();
   const { liveEvents, liveAlerts } = useWebSocket();
+  const [generating, setGenerating] = useState(false);
+  const [genResult, setGenResult] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenResult(null);
+    try {
+      const result = await api.generateTestEvents(10);
+      setGenResult(`Generated ${result.events_generated} events, ${result.alerts_triggered} alerts`);
+      refresh();
+    } catch {
+      setGenResult("Failed to generate events");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-soc-text">Security Overview</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-soc-text">Security Overview</h2>
+        <div className="flex items-center gap-3">
+          {genResult && <span className="text-xs text-soc-text/60">{genResult}</span>}
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md transition-colors"
+          >
+            {generating ? "Generating..." : "Generate Test Events"}
+          </button>
+        </div>
+      </div>
 
       <StatCards summary={summary} />
 

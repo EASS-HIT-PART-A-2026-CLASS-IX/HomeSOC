@@ -42,3 +42,6 @@ CLAUDE.md
 # Logs
 *.log
 logs/
+
+# Course notes (local only)
+docs/EX3-notes.md

@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from ..db import repository
 from ..engine.detector import DetectionEngine
 from ..api.ws import manager
 
+logger = logging.getLogger("homesoc.pipeline")
+
 
 class IngestionPipeline:
     """Orchestrates event processing: store → detect → alert → broadcast."""
 
-    def __init__(self, detection_engine: DetectionEngine) -> None:
+    def __init__(self, detection_engine: DetectionEngine, redis_client=None) -> None:
         self.engine = detection_engine
+        self.redis = redis_client
         self._total_processed = 0
         self._total_alerts = 0
 
@@ -36,6 +40,13 @@ class IngestionPipeline:
             for alert in alerts:
                 await repository.insert_alert(alert)
                 await manager.broadcast({"type": "alert", "data": alert})
+                # Push to Redis notification queue if available
+                if self.redis:
+                    try:
+                        from ..worker.redis_client import push_alert
+                        await push_alert(self.redis, alert)
+                    except Exception:
+                        logger.debug("Redis unavailable, skipping alert queue")
                 alerts_generated += 1
 
         # Broadcast events to dashboard

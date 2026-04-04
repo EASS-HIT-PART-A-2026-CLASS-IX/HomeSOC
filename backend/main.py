@@ -8,15 +8,17 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 logger = logging.getLogger("homesoc")
 
 # Allow imports from project root
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from backend.api import agents, alerts, dashboard, events, rules
+from backend.api import agents, alerts, dashboard, demo, events, rules, setup, users
 from backend.api.ws import manager
 from backend.config import settings
 from backend.db.connection import close_db, init_db
@@ -63,8 +65,21 @@ async def lifespan(app: FastAPI):
 
     # Initialize detection engine and pipeline
     engine = DetectionEngine(settings.rules_dir)
-    pipeline = IngestionPipeline(engine)
+
+    # Try to connect to Redis (optional — runs fine without it)
+    redis_client = None
+    try:
+        from backend.worker.redis_client import get_redis
+        redis_client = await get_redis(settings.redis_url)
+        await redis_client.ping()
+        logger.info("Connected to Redis at %s", settings.redis_url)
+    except Exception:
+        logger.info("Redis not available — alert notification queue disabled")
+        redis_client = None
+
+    pipeline = IngestionPipeline(engine, redis_client=redis_client)
     app.state.pipeline = pipeline
+    app.state.redis = redis_client
 
     # Start background tasks
     checker_task = asyncio.create_task(_stale_agent_checker())
@@ -82,8 +97,52 @@ async def lifespan(app: FastAPI):
     # Shutdown
     checker_task.cancel()
     retention_task.cancel()
+    if redis_client:
+        await redis_client.aclose()
     await close_db()
     print("[HomeSOC] Backend shut down")
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Simple in-memory rate limiter that adds standard rate-limit headers."""
+
+    RATE_LIMIT = 120  # requests per window
+    WINDOW_SECONDS = 60
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._buckets: dict[str, list[float]] = {}
+
+    async def dispatch(self, request: Request, call_next):
+        import time
+
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        cutoff = now - self.WINDOW_SECONDS
+
+        # Clean and count
+        bucket = self._buckets.setdefault(client_ip, [])
+        bucket[:] = [t for t in bucket if t > cutoff]
+        remaining = max(0, self.RATE_LIMIT - len(bucket))
+
+        if len(bucket) >= self.RATE_LIMIT:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded"},
+                headers={
+                    "X-RateLimit-Limit": str(self.RATE_LIMIT),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(int(cutoff + self.WINDOW_SECONDS)),
+                    "Retry-After": str(self.WINDOW_SECONDS),
+                },
+            )
+
+        bucket.append(now)
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(self.RATE_LIMIT)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Reset"] = str(int(now + self.WINDOW_SECONDS))
+        return response
 
 
 app = FastAPI(
@@ -92,6 +151,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -107,6 +168,9 @@ app.include_router(alerts.router)
 app.include_router(agents.router)
 app.include_router(dashboard.router)
 app.include_router(rules.router)
+app.include_router(users.router)
+app.include_router(demo.router)
+app.include_router(setup.router)
 
 
 @app.websocket("/ws/live")
@@ -122,7 +186,7 @@ async def websocket_live(ws: WebSocket):
 
 
 @app.get("/health")
-async def health():
+async def health(request: Request):
     return {
         "status": "ok",
         "ws_clients": manager.active_count,

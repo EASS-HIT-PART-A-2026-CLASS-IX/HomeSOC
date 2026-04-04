@@ -291,6 +291,39 @@ async def purge_old_alerts(retention_days: int) -> int:
     return cursor.rowcount
 
 
+# ── Users ──────────────────────────────────────────────────────────────
+
+
+async def create_user(user_id: str, username: str, hashed_password: str, role: str = "viewer") -> dict:
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO users (id, username, hashed_password, role) VALUES (?, ?, ?, ?)",
+        [user_id, username, hashed_password, role],
+    )
+    await db.commit()
+    return {"id": user_id, "username": username, "role": role}
+
+
+async def get_user_by_username(username: str) -> dict | None:
+    db = await get_db()
+    cursor = await db.execute("SELECT * FROM users WHERE username = ?", [username])
+    row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def get_users() -> list[dict]:
+    db = await get_db()
+    cursor = await db.execute("SELECT id, username, role, created_at FROM users ORDER BY created_at")
+    return [dict(r) for r in await cursor.fetchall()]
+
+
+async def delete_user(user_id: str) -> bool:
+    db = await get_db()
+    cursor = await db.execute("DELETE FROM users WHERE id = ?", [user_id])
+    await db.commit()
+    return cursor.rowcount > 0
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────
 
 

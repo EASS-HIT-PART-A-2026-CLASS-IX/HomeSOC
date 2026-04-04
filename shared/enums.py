@@ -5,8 +5,6 @@ from enum import Enum
 
 class Platform(str, Enum):
     MACOS = "macos"
-    WINDOWS = "windows"
-    LINUX = "linux"
     NETWORK = "network"
 
 

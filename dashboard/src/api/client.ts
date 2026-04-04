@@ -38,6 +38,27 @@ export const api = {
 
   getAgents: () => request<Record<string, unknown>[]>("/agents"),
 
+  registerAgent: (agent: {
+    agent_id: string;
+    hostname: string;
+    platform: string;
+    ip_address?: string;
+  }) =>
+    request<{ status: string; agent_id: string }>("/agents", {
+      method: "POST",
+      body: JSON.stringify(agent),
+    }),
+
+  getAgentSetup: (agentId: string, platform: string) =>
+    request<{
+      api_key: string;
+      backend_url: string;
+      agent_id: string;
+      platform: string;
+      commands: { label: string; description: string; cmd: string }[];
+      notes: string[];
+    }>(`/setup/agent-instructions?agent_id=${encodeURIComponent(agentId)}&platform=${encodeURIComponent(platform)}`),
+
   getRules: () => request<Record<string, unknown>[]>("/rules"),
 
   deleteAgent: (id: string) =>
@@ -54,4 +75,7 @@ export const api = {
 
   clearAlerts: () =>
     request<{ cleared: number }>("/alerts", { method: "DELETE" }),
+
+  generateTestEvents: (count: number = 10) =>
+    request<{ events_generated: number; alerts_triggered: number }>(`/demo/generate?count=${count}`, { method: "POST" }),
 };

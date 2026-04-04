@@ -1,4 +1,4 @@
-export type Platform = "macos" | "windows" | "linux" | "network";
+export type Platform = "macos" | "network";
 export type EventCategory = "process" | "file" | "network" | "auth" | "authz" | "service" | "system";
 export type Severity = "info" | "low" | "medium" | "high" | "critical";
 export type AlertStatus = "open" | "acknowledged" | "resolved" | "false_positive";
