@@ -148,4 +148,4 @@ PYTHONPATH=. python -m pytest tests/ -v
 
 ## AI Assistance
 
-Built with Claude (Anthropic) via Claude Code. AI assisted with scaffolding, detection rule design, bug fixing, and test writing. All code was reviewed and tested against real macOS security events before committing.
+Built with Claude (Anthropic) via Claude Code. AI assisted with scaffolding, detection rule design, and bug fixing. All code was reviewed and tested against real macOS security events before committing.
