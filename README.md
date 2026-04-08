@@ -57,6 +57,8 @@ HOMESOC_API_KEY=your-secret-key-here
 # Python env (from project root)
 uv venv && source .venv/bin/activate
 uv pip install -r backend/requirements.txt
+# or with pip directly (bcrypt, jose, and multipart are required)
+pip3 install bcrypt "python-jose[cryptography]" python-multipart
 
 # Terminal 1 — backend
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8443 --reload
@@ -73,13 +75,15 @@ Open **http://localhost:5173**.
 
 > Requires `sudo` and **Full Disk Access** for your terminal app.  
 > Grant it in: System Settings → Privacy & Security → Full Disk Access
+>
+> **Important:** Both your terminal app **and** `/usr/bin/python3` must be in the Full Disk Access list — macOS checks the Python process specifically when it spawns `eslogger`.
 
 The easiest way: go to the **Agents page** in the dashboard, click **Add Agent**, then click **Setup** — it shows the exact command with your API key pre-filled.
 
 Or run it directly from the project root:
 
 ```bash
-sudo python agents/macos/main.py \
+sudo python3 agents/macos/main.py \
   --backend-url http://localhost:8443 \
   --agent-id <your-agent-id> \
   --api-key <your-api-key>
@@ -87,7 +91,11 @@ sudo python agents/macos/main.py \
 
 To stop the agent: press `Ctrl+C` in the terminal where it's running.
 
-Once the agent is registered, you can customize what it collects from the **Agents page** in the dashboard — each agent has its own collector settings panel where you can toggle individual event groups on or off (process execution, file access, network connections, SSH, sudo, volume mounts, etc.). Changes apply on the next heartbeat (~30s).
+Once the agent is registered, open its settings panel from the **Agents page**. It has three tabs:
+
+- **Collectors** — toggle individual event groups (process execution, file access, network, SSH, sudo, volume mounts, etc.). Changes apply on the next heartbeat (~30s).
+- **Detection Rules** — enable or disable specific detection rules for this agent. Disabled rules generate no alerts; events are still collected.
+- **Whitelist** — suppress specific events by field match (exact, prefix, or contains) before they are stored. Matched events never appear in the feed, events table, or trigger alerts.
 
 ---
 
@@ -111,7 +119,7 @@ YAML files in `backend/rules/`. Two types:
 | External Volume Mount | INFO |
 | Non-Apple Kernel Extension | HIGH |
 | Remote Thread Injection | CRITICAL |
-| Task Port Inspection | HIGH |
+| Task Port Inspection (non-system processes) | HIGH |
 | Privilege Escalation to Root | CRITICAL |
 | Sudo Command Executed | MEDIUM |
 | Sudo Denied (repeated failures) | HIGH |
@@ -120,6 +128,10 @@ YAML files in `backend/rules/`. Two types:
 | Screen Sharing Attached | MEDIUM |
 | Malware Detected (XProtect) | CRITICAL |
 | Sensitive File Deleted | HIGH |
+
+Rules can be toggled per-agent from the **Agents page → Settings → Detection Rules** tab.
+
+The **Events** table is paginated at 75 rows per page with First / Prev / page-number / Next / Last navigation.
 
 ---
 

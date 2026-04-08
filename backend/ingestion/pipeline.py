@@ -21,6 +21,24 @@ class IngestionPipeline:
         self._total_processed = 0
         self._total_alerts = 0
 
+    @staticmethod
+    def _is_whitelisted(event: dict, whitelist: list[dict]) -> bool:
+        """Return True if the event matches any whitelist entry and should be dropped."""
+        for entry in whitelist:
+            field = entry.get("field", "")
+            value = entry.get("value", "")
+            match_type = entry.get("match_type", "exact")
+            if not field or not value:
+                continue
+            ev_val = str(event.get(field) or "")
+            if match_type == "exact" and ev_val == value:
+                return True
+            if match_type == "prefix" and ev_val.startswith(value):
+                return True
+            if match_type == "contains" and value in ev_val:
+                return True
+        return False
+
     async def process_batch(self, events: list[dict]) -> tuple[int, int]:
         """Process a batch of events. Returns (events_stored, alerts_generated)."""
         now = datetime.now(timezone.utc).isoformat()
@@ -30,13 +48,34 @@ class IngestionPipeline:
             if not ev.get("received_at"):
                 ev["received_at"] = now
 
+        # Cache per-agent config to avoid repeated DB lookups in a batch
+        _agent_config_cache: dict[str, dict] = {}
+
+        async def _get_config(agent_id: str) -> dict:
+            if agent_id not in _agent_config_cache:
+                agent = await repository.get_agent_by_id(agent_id)
+                _agent_config_cache[agent_id] = (agent.get("config") or {}) if agent else {}
+            return _agent_config_cache[agent_id]
+
+        # Filter whitelisted events before storing
+        filtered_events = []
+        for ev in events:
+            config = await _get_config(ev.get("agent_id", ""))
+            whitelist = config.get("whitelist", [])
+            if not self._is_whitelisted(ev, whitelist):
+                filtered_events.append(ev)
+        events = filtered_events
+
         # Store events
         stored = await repository.insert_events(events)
 
         # Run detection on each event
         alerts_generated = 0
         for ev in events:
-            alerts = self.engine.evaluate(ev)
+            config = await _get_config(ev.get("agent_id", ""))
+            enabled_rules: dict = config.get("enabled_rules", {})
+            disabled = {rid for rid, on in enabled_rules.items() if not on}
+            alerts = self.engine.evaluate(ev, disabled)
             for alert in alerts:
                 await repository.insert_alert(alert)
                 await manager.broadcast({"type": "alert", "data": alert})

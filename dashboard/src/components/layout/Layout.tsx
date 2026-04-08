@@ -2,7 +2,6 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import type { ConnectionStatus } from "../../hooks/useWebSocket";
-import { useSettings } from "../../contexts/SettingsContext";
 
 interface LayoutProps {
   status: ConnectionStatus;
@@ -13,7 +12,6 @@ interface LayoutProps {
 const FULL_HEIGHT_ROUTES = ["/rules"];
 
 export function Layout({ status, onToggle }: LayoutProps) {
-  const { settings } = useSettings();
   const { pathname } = useLocation();
 
   const isFullHeight = FULL_HEIGHT_ROUTES.includes(pathname);
@@ -23,7 +21,7 @@ export function Layout({ status, onToggle }: LayoutProps) {
       <Sidebar />
       <div className="ml-14">
         <Header status={status} onToggle={onToggle} />
-        <main className={isFullHeight ? "" : settings.compactMode ? "p-3" : "p-6"}>
+        <main className={isFullHeight ? "" : "p-6"}>
           <Outlet />
         </main>
       </div>

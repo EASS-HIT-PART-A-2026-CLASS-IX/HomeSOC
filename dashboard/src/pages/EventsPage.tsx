@@ -18,7 +18,7 @@ export function EventsPage() {
     api.getAgents().then(setAgents).catch(() => {});
   }, []);
 
-  const params: Record<string, string | number> = { limit: 200 };
+  const params: Record<string, string | number> = { limit: 1000 };
   if (category) params.category = category;
   if (severity) params.severity = severity;
 

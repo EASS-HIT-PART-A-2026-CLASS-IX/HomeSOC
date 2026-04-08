@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useDashboardSummary } from "../hooks/useEvents";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { StatCards } from "../components/dashboard/StatCards";
@@ -15,6 +15,17 @@ export function DashboardPage() {
   const { liveEvents, liveAlerts } = useWebSocket();
   const [generating, setGenerating] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
+  const leftColRef = useRef<HTMLDivElement>(null);
+  const [leftColHeight, setLeftColHeight] = useState<number | undefined>();
+
+  useEffect(() => {
+    if (!leftColRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setLeftColHeight(entry.borderBoxSize[0].blockSize);
+    });
+    ro.observe(leftColRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -51,17 +62,22 @@ export function DashboardPage() {
         <StatCards summary={summary} />
       </div>
 
-      <div className="grid grid-cols-3 gap-4 items-stretch">
-        <div className="col-span-2 flex flex-col">
-          <LiveFeed events={liveEvents} className="flex-1" />
+      <div className="grid grid-cols-3 gap-4 items-start">
+        <div className="col-span-2" ref={leftColRef}>
+          <LiveFeed events={liveEvents} />
         </div>
-        <div className="flex flex-col gap-4">
-          <AlertsPanel alerts={liveAlerts.length > 0 ? liveAlerts : summary?.recent_alerts || []} />
+        <div
+          className="flex flex-col gap-3"
+          style={leftColHeight ? { height: leftColHeight } : undefined}
+        >
+          <AlertsPanel
+            alerts={liveAlerts.length > 0 ? liveAlerts : summary?.recent_alerts || []}
+            className="flex-1 min-h-0"
+          />
           <AgentStatus />
+          <CategoryBreakdown summary={summary} />
         </div>
       </div>
-
-      <CategoryBreakdown summary={summary} />
     </div>
   );
 }

@@ -1,10 +1,12 @@
 import { SecurityEvent, AgentInfo } from "../../types/events";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSettings } from "../../contexts/SettingsContext";
 import { formatDateTime } from "../../utils/formatTime";
 import { severityBadge } from "../../utils/severity";
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "../ui/card";
+
+const PAGE_SIZE = 75;
 
 interface EventTableProps {
   events: SecurityEvent[];
@@ -17,6 +19,7 @@ type SortDir = "asc" | "desc" | null;
 export function EventTable({ events, loading, agents = [] }: EventTableProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [page, setPage] = useState(1);
   const { settings } = useSettings();
 
   const agentMap = useMemo(() => {
@@ -41,6 +44,16 @@ export function EventTable({ events, loading, agents = [] }: EventTableProps) {
       return sortDir === "desc" ? tb - ta : ta - tb;
     });
   }, [events, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedEvents.length / PAGE_SIZE));
+
+  // Reset to page 1 when events or filters change
+  useEffect(() => { setPage(1); }, [events]);
+
+  const pageEvents = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sortedEvents.slice(start, start + PAGE_SIZE);
+  }, [sortedEvents, page]);
 
   if (loading) {
     return (
@@ -80,7 +93,7 @@ export function EventTable({ events, loading, agents = [] }: EventTableProps) {
           </tr>
         </thead>
         <tbody>
-          {sortedEvents.map((ev) => (
+          {pageEvents.map((ev) => (
             <>
               <tr
                 key={ev.id}
@@ -104,7 +117,15 @@ export function EventTable({ events, loading, agents = [] }: EventTableProps) {
                 <td className="px-4 py-2.5 text-xs text-muted-foreground font-mono whitespace-nowrap">
                   {agentMap.get(ev.agent_id) ?? ev.agent_id}
                 </td>
-                <td className="px-4 py-2.5 text-xs text-muted-foreground">{ev.source}</td>
+                <td className="px-4 py-2.5">
+                  {isTestEvent(ev.source) ? (
+                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border border-violet-500/40 bg-violet-500/10 text-violet-400 tracking-wide">
+                      TEST
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{ev.source}</span>
+                  )}
+                </td>
               </tr>
               {expanded === ev.id && (
                 <tr key={`${ev.id}-detail`}>
@@ -122,8 +143,73 @@ export function EventTable({ events, loading, agents = [] }: EventTableProps) {
       {events.length === 0 && (
         <p className="text-muted-foreground text-sm text-center py-8">No events found</p>
       )}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+          <span className="text-xs text-muted-foreground">
+            Page {page} of {totalPages} &middot; {sortedEvents.length} events
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              className="px-2 py-1 text-xs rounded text-muted-foreground hover:text-foreground hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+              .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item, idx) =>
+                item === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground">…</span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setPage(item as number)}
+                    className={`min-w-[28px] px-2 py-1 text-xs rounded transition-colors ${
+                      page === item
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+              className="px-2 py-1 text-xs rounded text-muted-foreground hover:text-foreground hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
     </Card>
   );
+}
+
+function isTestEvent(source: string): boolean {
+  return source === "demo" || source.startsWith("[TEST]");
 }
 
 function getEventDetail(ev: SecurityEvent): string {

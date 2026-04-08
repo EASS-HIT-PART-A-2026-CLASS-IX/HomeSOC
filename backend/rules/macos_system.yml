@@ -57,6 +57,13 @@ rules:
       process_path:
       - /usr/bin/lldb
       - /Applications/Xcode.app/
+      - /opt/homebrew/Cellar/redis/
+      - /usr/bin/redis-server
+      - /opt/homebrew/bin/redis
+      - /System/Library/
+      - /usr/libexec/
+      - /usr/sbin/
+      - /usr/bin/
 - id: macos-privilege-escalation-root
   name: Privilege Escalation to Root
   description: Process changed its UID/GID to 0 (root)

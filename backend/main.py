@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -107,7 +108,7 @@ async def lifespan(app: FastAPI):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiter that adds standard rate-limit headers."""
 
-    RATE_LIMIT = 120  # requests per window
+    RATE_LIMIT = 600  # requests per window
     WINDOW_SECONDS = 60
 
     def __init__(self, app):
@@ -115,7 +116,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._buckets: dict[str, list[float]] = {}
 
     async def dispatch(self, request: Request, call_next):
-        import time
+        # Agent event/heartbeat POSTs are high-frequency by design — skip rate limiting for them
+        if request.url.path in ("/api/v1/events", "/api/v1/heartbeat"):
+            return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()

@@ -55,24 +55,24 @@ export function CategoryBreakdown({ summary }: CategoryBreakdownProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="bg-soc-card border border-soc-border rounded-lg p-4">
-      <h3 className="text-sm font-medium text-soc-text mb-4">
+    <div className="bg-soc-card border border-soc-border rounded-lg p-3">
+      <h3 className="text-xs font-medium text-soc-text mb-3">
         Events by Category (24h)
       </h3>
       {data.length === 0 ? (
-        <p className="text-soc-muted text-sm text-center py-8">No data</p>
+        <p className="text-soc-muted text-xs text-center py-4">No data</p>
       ) : (
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           {/* Pie chart */}
-          <div className="flex-shrink-0" style={{ width: 200, height: 200 }}>
+          <div className="flex-shrink-0" style={{ width: 130, height: 130 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={85}
+                  innerRadius={32}
+                  outerRadius={56}
                   paddingAngle={2}
                   dataKey="value"
                   stroke="none"
@@ -89,7 +89,7 @@ export function CategoryBreakdown({ summary }: CategoryBreakdownProps) {
                     backgroundColor: colors.card,
                     border: `1px solid ${colors.border}`,
                     borderRadius: "8px",
-                    fontSize: "12px",
+                    fontSize: "11px",
                     color: colors.text,
                   }}
                   formatter={(value: number) => [
@@ -102,30 +102,30 @@ export function CategoryBreakdown({ summary }: CategoryBreakdownProps) {
           </div>
 
           {/* Legend */}
-          <div className="flex-1 space-y-2">
+          <div className="flex-1 space-y-1">
             {data.map((entry) => {
               const pct = ((entry.value / total) * 100).toFixed(1);
               return (
-                <div key={entry.key} className="flex items-center gap-3">
+                <div key={entry.key} className="flex items-center gap-2">
                   <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: categoryColors[entry.key] || "#6b7280" }}
                   />
-                  <span className="text-sm text-soc-text flex-1">{entry.name}</span>
-                  <span className="text-sm font-medium text-soc-text tabular-nums">
+                  <span className="text-xs text-soc-text flex-1">{entry.name}</span>
+                  <span className="text-xs font-medium text-soc-text tabular-nums">
                     {entry.value}
                   </span>
-                  <span className="text-xs text-soc-muted w-12 text-right tabular-nums">
+                  <span className="text-xs text-soc-muted w-10 text-right tabular-nums">
                     {pct}%
                   </span>
                 </div>
               );
             })}
-            <div className="border-t border-soc-border pt-2 mt-2 flex items-center gap-3">
-              <div className="w-3 h-3 flex-shrink-0" />
-              <span className="text-sm text-soc-muted flex-1">Total</span>
-              <span className="text-sm font-medium text-soc-text tabular-nums">{total}</span>
-              <span className="text-xs text-soc-muted w-12 text-right">100%</span>
+            <div className="border-t border-soc-border pt-1 mt-1 flex items-center gap-2">
+              <div className="w-2 h-2 flex-shrink-0" />
+              <span className="text-xs text-soc-muted flex-1">Total</span>
+              <span className="text-xs font-medium text-soc-text tabular-nums">{total}</span>
+              <span className="text-xs text-soc-muted w-10 text-right">100%</span>
             </div>
           </div>
         </div>

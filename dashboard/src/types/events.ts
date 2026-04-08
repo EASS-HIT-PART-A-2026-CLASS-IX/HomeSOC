@@ -48,6 +48,15 @@ export interface Alert {
   resolved_at?: string;
 }
 
+export type WhitelistMatchType = "exact" | "prefix" | "contains";
+export interface WhitelistEntry {
+  id: string;           // client-side UUID for list key
+  field: string;        // e.g. "process_name", "process_path", "file_path", "dst_ip"
+  value: string;
+  match_type: WhitelistMatchType;
+  note?: string;        // optional human label
+}
+
 export interface AgentInfo {
   id: string;
   hostname: string;
@@ -56,7 +65,11 @@ export interface AgentInfo {
   version: string;
   last_heartbeat?: string;
   status: AgentStatus;
-  config?: { event_groups?: Record<string, boolean> };
+  config?: {
+    event_groups?: Record<string, boolean>;
+    enabled_rules?: Record<string, boolean>;
+    whitelist?: WhitelistEntry[];
+  };
 }
 
 export interface DashboardSummary {

@@ -23,15 +23,20 @@ class DetectionEngine:
         # group_key is derived from the event to scope counting per-source
         self._threshold_windows: dict[tuple[str, str], list[float]] = defaultdict(list)
 
-    def evaluate(self, event: dict) -> list[dict]:
+    def evaluate(self, event: dict, disabled_rule_ids: set[str] | None = None) -> list[dict]:
         """Evaluate an event against all rules. Returns list of alert dicts."""
         alerts = []
+        disabled = disabled_rule_ids or set()
 
         for rule in self.single_rules:
+            if rule["id"] in disabled:
+                continue
             if self._match_single(rule, event):
                 alerts.append(self._create_alert(rule, event))
 
         for rule in self.threshold_rules:
+            if rule["id"] in disabled:
+                continue
             alert = self._check_threshold(rule, event)
             if alert:
                 alerts.append(alert)

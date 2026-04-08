@@ -192,7 +192,7 @@ const sections: GuideSection[] = [
     faqs: [
       {
         q: "How do I start the macOS agent?",
-        a: "Open a terminal and run:\n\n  cd agents/macos\n  sudo python main.py --backend-url http://localhost:8443 --agent-id <your-agent-id> --api-key <your-api-key>\n\nThe easiest way is to add the agent on the Agents page and click the Setup button — it shows the exact command with your API key pre-filled. You need sudo because eslogger requires root access. Your terminal app also needs Full Disk Access (System Settings → Privacy & Security → Full Disk Access).",
+        a: "Open a terminal and run:\n\n  cd agents/macos\n  sudo python3 main.py --backend-url http://localhost:8443 --agent-id <your-agent-id> --api-key <your-api-key>\n\nThe easiest way is to add the agent on the Agents page and click the Setup button — it shows the exact command with your API key pre-filled. You need sudo because eslogger requires root access. Your terminal app also needs Full Disk Access (System Settings → Privacy & Security → Full Disk Access).",
       },
       {
         q: "Why does the agent need sudo / root access?",
@@ -360,7 +360,7 @@ const sections: GuideSection[] = [
       "How to start the system, generate test data, and verify everything works end to end.",
     content: [
       "**Quick start (all-in-one):**\n  ./scripts/dev.sh\n\nThis starts both the backend and dashboard in one command. The backend runs on port 8443, the dashboard on port 5173.",
-      "**Manual start (separate terminals):**\nTerminal 1 (Backend):\n  cd backend\n  python -m uvicorn main:app --host 0.0.0.0 --port 8443 --reload\n\nTerminal 2 (Dashboard):\n  cd dashboard\n  npm run dev\n\nTerminal 3 (Agent — optional):\n  cd agents/macos\n  sudo python main.py",
+      "**Manual start (separate terminals):**\nTerminal 1 (Backend):\n  cd backend\n  python -m uvicorn main:app --host 0.0.0.0 --port 8443 --reload\n\nTerminal 2 (Dashboard):\n  cd dashboard\n  npm run dev\n\nTerminal 3 (Agent — optional):\n  cd agents/macos\n  sudo python3 main.py",
       "**Test event generator** — To test without running real agents:\n  python scripts/generate_test_events.py\n\nThis sends realistic fake events to the backend including process executions, network connections, auth attempts, and file operations. Some events are designed to trigger detection rules so you'll see alerts too.\n\nOptions:\n• --count N — Events per batch (default: 20)\n• --batches M — Number of batches (default: 3)\n• --interval S — Seconds between batches (default: 2)\n• --url URL — Backend URL (default: http://localhost:8443)",
       "**Verification checklist:**\n1. Open http://localhost:5173 — Dashboard should load.\n2. Check the connection indicator — should show Live (green) or Connecting.\n3. Run the test event generator.\n4. Stat cards should update with event counts.\n5. Timeline should show spikes.\n6. Live Feed should show scrolling events.\n7. Alerts panel should show triggered rules.\n8. Check http://localhost:8443/docs — Swagger UI should load.",
     ],
@@ -570,7 +570,7 @@ export function GuidePage() {
   };
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-3xl mx-auto space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>

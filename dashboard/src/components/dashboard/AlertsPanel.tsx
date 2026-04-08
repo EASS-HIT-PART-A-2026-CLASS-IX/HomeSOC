@@ -9,6 +9,7 @@ import { Button } from "../ui/button";
 interface AlertsPanelProps {
   alerts: Alert[];
   onAcknowledge?: (id: string) => void;
+  className?: string;
 }
 
 const severityVariant: Record<Severity, BadgeProps["variant"]> = {
@@ -27,12 +28,12 @@ const severityBorderStyle: Record<Severity, string> = {
   info: "border-l-soc-muted bg-soc-muted/5",
 };
 
-export function AlertsPanel({ alerts, onAcknowledge }: AlertsPanelProps) {
+export function AlertsPanel({ alerts, onAcknowledge, className }: AlertsPanelProps) {
   const { settings } = useSettings();
 
   return (
-    <Card>
-      <CardHeader className="pb-3 px-4 pt-4">
+    <Card className={`flex flex-col${className ? ` ${className}` : ""}`}>
+      <CardHeader className="pb-3 px-4 pt-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-soc-warning" />
@@ -42,8 +43,8 @@ export function AlertsPanel({ alerts, onAcknowledge }: AlertsPanelProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pb-4">
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      <CardContent className="px-4 pb-4 flex-1 min-h-0">
+        <div className="space-y-2 h-full overflow-y-auto">
           {alerts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <CheckCircle className="w-8 h-8 mx-auto mb-2 text-soc-success opacity-50" />

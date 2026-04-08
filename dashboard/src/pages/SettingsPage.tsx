@@ -1,16 +1,15 @@
-import { Activity, Bell, Layout, RotateCcw, Clock, Columns2, Sliders } from "lucide-react";
+import { Bell, Layout, RotateCcw, Clock, Columns2 } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { useSettings } from "../contexts/SettingsContext";
 
-const feedLimits = [50, 100, 200, 500];
 const refreshOptions = [5, 10, 15, 30, 60];
 
 export function SettingsPage() {
   const { settings, update, reset } = useSettings();
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Settings</h2>
         <Button variant="ghost" size="sm" onClick={reset} className="text-muted-foreground hover:text-destructive gap-1.5">
@@ -18,28 +17,6 @@ export function SettingsPage() {
           Reset to defaults
         </Button>
       </div>
-
-      {/* Display */}
-      <Section icon={<Sliders className="w-4 h-4" />} title="Display">
-        <SettingRow label="Compact Mode" description="Reduce padding and spacing for denser information display">
-          <Toggle checked={settings.compactMode} onChange={(v) => update("compactMode", v)} />
-        </SettingRow>
-      </Section>
-
-      {/* Live Feed */}
-      <Section icon={<Activity className="w-4 h-4" />} title="Live Feed">
-        <SettingRow label="Max Visible Events" description="Number of events shown in the live feed panel">
-          <SegmentedControl
-            options={feedLimits.map((n) => ({ value: n, label: String(n) }))}
-            selected={settings.maxFeedEvents}
-            onChange={(v) => update("maxFeedEvents", v)}
-          />
-        </SettingRow>
-
-        <SettingRow label="Auto-Scroll" description="Automatically scroll to newest events in the feed">
-          <Toggle checked={settings.autoScrollFeed} onChange={(v) => update("autoScrollFeed", v)} />
-        </SettingRow>
-      </Section>
 
       {/* Time & Display */}
       <Section icon={<Clock className="w-4 h-4" />} title="Time & Display">

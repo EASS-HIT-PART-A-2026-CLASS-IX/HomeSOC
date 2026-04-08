@@ -24,7 +24,7 @@ from shared.enums import EventCategory, Platform, Severity
 # If a group is disabled in config, events of those types are dropped at normalize time.
 EVENT_GROUP_MAP: dict[str, list[str]] = {
     "process_exec":        ["exec"],
-    "file_events":         ["open", "create", "rename"],
+    "file_events":         ["create", "rename"],
     "file_deletion":       ["unlink"],
     "auth":                ["authentication"],
     "sudo_su":             ["sudo", "su"],
@@ -45,7 +45,9 @@ _ES_TYPE_TO_GROUP: dict[str, str] = {
     for es_type in es_types
 }
 
-# Event types to subscribe to
+# Event types to subscribe to.
+# NOTE: "open" is intentionally excluded — it fires thousands of times per second
+# on a normal Mac (every file read) and creates too much noise/load.
 SUBSCRIBED_EVENTS = [
     # Process
     "exec",
@@ -54,8 +56,7 @@ SUBSCRIBED_EVENTS = [
     "get_task",
     "setuid",
     "setgid",
-    # File
-    "open",
+    # File (write/delete ops only — not read/open)
     "create",
     "rename",
     "unlink",
@@ -83,6 +84,15 @@ FILTERED_PATH_PREFIXES = [
     "/Library/Apple/System/",
     "/usr/sbin/syslogd",
     "/usr/libexec/logd",
+    "/Applications/Visual Studio Code.app/",
+    "/opt/homebrew/Cellar/redis/",
+]
+
+# File-path-specific noise (for create/rename/delete events)
+FILTERED_FILE_PATHS = [
+    "/Library/Caches/",
+    "Library/Application Support/Code/",
+    ".git/index.lock",
 ]
 
 FILTERED_PROCESS_NAMES = [
@@ -93,6 +103,11 @@ FILTERED_PROCESS_NAMES = [
     "distnoted",
     "cfprefsd",
     "launchservicesd",
+    "redis-server",
+    "Code Helper (Plugin)",
+    "Code Helper (Renderer)",
+    "Code Helper",
+    "electron",
 ]
 
 # Filesystem types that indicate external/removable media
@@ -121,18 +136,35 @@ class EsloggerCollector(BaseCollector):
         else:
             print("[EsloggerCollector] All groups enabled")
 
+    def _is_noisy_file_path(self, path: str) -> bool:
+        if path.startswith("/private/var/folders/"):
+            return True
+        for fragment in FILTERED_FILE_PATHS:
+            if fragment in path:
+                return True
+        return False
+
     def _is_group_disabled(self, es_event_type: str) -> bool:
         if not self._disabled_groups:
             return False
         group = _ES_TYPE_TO_GROUP.get(es_event_type)
         return group in self._disabled_groups
 
+    async def _drain_stderr(self) -> None:
+        """Read and print stderr from eslogger so the pipe never blocks."""
+        if self._process is None or self._process.stderr is None:
+            return
+        async for line in self._process.stderr:
+            msg = line.decode("utf-8", errors="replace").strip()
+            if msg:
+                print(f"[EsloggerCollector] stderr: {msg}", flush=True)
+
     async def start(self, event_callback: Callable[[dict], Coroutine]) -> None:
         self._running = True
         cmd = ["eslogger", "--format", "json"] + self.event_types
 
-        print(f"[EsloggerCollector] Starting: {' '.join(cmd)}")
-        print(f"[EsloggerCollector] Note: requires sudo and Full Disk Access")
+        print(f"[EsloggerCollector] Starting: {' '.join(cmd)}", flush=True)
+        print(f"[EsloggerCollector] Note: requires sudo and Full Disk Access", flush=True)
 
         try:
             self._process = await asyncio.create_subprocess_exec(
@@ -141,32 +173,45 @@ class EsloggerCollector(BaseCollector):
                 stderr=asyncio.subprocess.PIPE,
             )
         except PermissionError:
-            print("[EsloggerCollector] Permission denied. Run with sudo.")
+            print("[EsloggerCollector] Permission denied. Run with sudo.", flush=True)
             return
         except FileNotFoundError:
-            print("[EsloggerCollector] eslogger not found. Requires macOS 13+.")
+            print("[EsloggerCollector] eslogger not found. Requires macOS 13+.", flush=True)
             return
 
         if self._process.stdout is None:
-            print("[EsloggerCollector] Failed to capture stdout from eslogger process")
+            print("[EsloggerCollector] Failed to capture stdout from eslogger process", flush=True)
             return
 
-        async for line in self._process.stdout:
-            if not self._running:
-                break
+        print(f"[EsloggerCollector] Process started (PID {self._process.pid}), waiting for events...", flush=True)
 
-            line_str = line.decode("utf-8", errors="replace").strip()
-            if not line_str:
-                continue
+        # Consume stderr in the background so it never blocks stdout
+        stderr_task = asyncio.create_task(self._drain_stderr())
 
+        try:
+            async for line in self._process.stdout:
+                if not self._running:
+                    break
+
+                line_str = line.decode("utf-8", errors="replace").strip()
+                if not line_str:
+                    continue
+
+                try:
+                    raw_event = json.loads(line_str)
+                except json.JSONDecodeError:
+                    print(f"[EsloggerCollector] JSON parse error on: {line_str[:120]}", flush=True)
+                    continue
+
+                normalized = self._normalize(raw_event)
+                if normalized is not None:
+                    await event_callback(normalized)
+        finally:
+            stderr_task.cancel()
             try:
-                raw_event = json.loads(line_str)
-            except json.JSONDecodeError:
-                continue
-
-            normalized = self._normalize(raw_event)
-            if normalized is not None:
-                await event_callback(normalized)
+                await stderr_task
+            except asyncio.CancelledError:
+                pass
 
     async def stop(self) -> None:
         self._running = False
@@ -176,7 +221,10 @@ class EsloggerCollector(BaseCollector):
 
     def _normalize(self, raw: dict) -> dict | None:
         """Convert eslogger JSON to a NormalizedEvent dict."""
-        event_type = raw.get("event_type", "")
+        # eslogger outputs event_type as a numeric ID on macOS 14+.
+        # The reliable source of the type name is the key inside the "event" dict.
+        event_data_keys = raw.get("event", {})
+        event_type = next(iter(event_data_keys), "") or str(raw.get("event_type", ""))
 
         # Drop event if its group is disabled in config
         if self._is_group_disabled(event_type):
@@ -296,7 +344,7 @@ class EsloggerCollector(BaseCollector):
 
         if not file_path:
             return None
-        if file_path.startswith("/private/var/folders/"):
+        if self._is_noisy_file_path(file_path):
             return None
 
         return {
@@ -344,7 +392,7 @@ class EsloggerCollector(BaseCollector):
         event_data = raw.get("event", {})
         target = event_data.get("unlink", {}).get("target", {})
         file_path = target.get("path", "")
-        if not file_path or file_path.startswith("/private/var/folders/"):
+        if not file_path or self._is_noisy_file_path(file_path):
             return None
 
         # Higher severity for deletions in sensitive locations

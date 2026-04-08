@@ -13,7 +13,7 @@ _MACOS_INSTRUCTIONS = {
         {
             "label": "Start the agent",
             "description": "Run this from the HomeSoc project root. Launches the agent with your backend address, agent ID, and API key. The agent will begin collecting process, file, and network events from this machine and send them to the HomeSoc backend.",
-            "cmd": "sudo python agents/macos/main.py --backend-url {backend_url} --agent-id {agent_id} --api-key {api_key}",
+            "cmd": "sudo python3 agents/macos/main.py --backend-url {backend_url} --agent-id {agent_id} --api-key {api_key}",
         },
     ],
     "notes": [

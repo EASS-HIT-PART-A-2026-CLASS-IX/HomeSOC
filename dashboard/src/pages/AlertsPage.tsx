@@ -1,13 +1,21 @@
+import { useEffect } from "react";
 import { useAlerts } from "../hooks/useAlerts";
 import { AlertsPanel } from "../components/dashboard/AlertsPanel";
 import { api } from "../api/client";
 import { useClearData } from "../hooks/useClearData";
+import { useWebSocket } from "../hooks/useWebSocket";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 
 export function AlertsPage() {
   const { alerts, loading, refresh, updateStatus } = useAlerts();
+  const { liveAlerts } = useWebSocket();
   const { clearing, handleClear } = useClearData(api.clearAlerts, refresh, "alerts");
+
+  // Refresh from API whenever a new alert arrives via WebSocket
+  useEffect(() => {
+    if (liveAlerts.length > 0) refresh();
+  }, [liveAlerts]);
 
   return (
     <div className="space-y-4">

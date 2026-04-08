@@ -200,7 +200,7 @@ export function EventTimeline({ events }: EventTimelineProps) {
 
   // Which series to render
   const visibleSeries = severityFilter === "all"
-    ? SEVERITY_SERIES
+    ? SEVERITY_SERIES.filter((s) => s.key !== "info")
     : SEVERITY_SERIES.filter((s) => s.key === severityFilter);
 
   const totalEvents = useMemo(() => {
@@ -210,12 +210,12 @@ export function EventTimeline({ events }: EventTimelineProps) {
 
   const maxValue = useMemo(() => {
     const keys = visibleSeries.map((s) => s.key) as (keyof BucketRow)[];
-    return Math.max(1, ...chartData.map((d) => Math.max(...keys.map((k) => d[k] as number))));
+    return Math.max(1, ...chartData.map((d) => keys.reduce((sum, k) => sum + (d[k] as number), 0)));
   }, [chartData, visibleSeries]);
 
   const xInterval = useMemo(() => {
     if (range === "1h") return 9;
-    if (range === "today") return 3;
+    if (range === "today") return 0;
     return 0;
   }, [range]);
 
@@ -372,6 +372,7 @@ export function EventTimeline({ events }: EventTimelineProps) {
                 key={key}
                 type="monotone"
                 dataKey={key}
+                stackId="events"
                 stroke={hex}
                 fill={`url(#${gradId})`}
                 strokeWidth={2}

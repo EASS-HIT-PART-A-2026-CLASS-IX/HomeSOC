@@ -85,21 +85,25 @@ export function useWebSocketProvider(): WebSocketState {
     [settings.notifyOnHighAlerts]
   );
 
+  // Subscribe/unsubscribe the message handler whenever it changes
   useEffect(() => {
     const unsub = wsManager.subscribe(handleMessage);
+    return () => unsub();
+  }, [handleMessage]);
+
+  // Connect once on mount, disconnect on unmount
+  // Use resume() instead of connect() so _paused is always reset first —
+  // this handles React Strict Mode's double-invoke (mount→cleanup→remount).
+  useEffect(() => {
     const unsubStatus = wsManager.onStatusChange(setStatus);
-
-    wsManager.connect();
-
+    wsManager.resume();
     const pingInterval = setInterval(() => wsManager.sendPing(), 30000);
-
     return () => {
-      unsub();
       unsubStatus();
       clearInterval(pingInterval);
       wsManager.disconnect();
     };
-  }, [handleMessage]);
+  }, []);
 
   const toggle = useCallback(() => {
     if (wsManager.paused) {

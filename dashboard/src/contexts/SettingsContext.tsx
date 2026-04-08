@@ -1,23 +1,17 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
 export interface Settings {
-  maxFeedEvents: number;
-  autoScrollFeed: boolean;
   refreshInterval: number; // seconds
   notifyOnHighAlerts: boolean;
   confirmBeforeClear: boolean;
-  compactMode: boolean;
   showTimestampSeconds: boolean;
   timeFormat: "12h" | "24h";
 }
 
 const defaults: Settings = {
-  maxFeedEvents: 100,
-  autoScrollFeed: false,
   refreshInterval: 15,
   notifyOnHighAlerts: false,
   confirmBeforeClear: true,
-  compactMode: false,
   showTimestampSeconds: true,
   timeFormat: "24h",
 };
