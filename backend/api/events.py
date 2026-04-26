@@ -32,8 +32,8 @@ async def query_events(
     agent_id: str | None = None,
     event_type: str | None = None,
     since: str | None = None,
-    limit: int = Query(default=100, le=1000),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
 ) -> list[dict]:
     return await repository.get_events(
         category=category,

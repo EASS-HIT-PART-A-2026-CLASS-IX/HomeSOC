@@ -24,8 +24,8 @@ class AlertStatusUpdate(BaseModel):
 async def list_alerts(
     status: str | None = None,
     severity: str | None = None,
-    limit: int = Query(default=50, le=500),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
 ) -> list[dict]:
     return await repository.get_alerts(
         status=status, severity=severity, limit=limit, offset=offset
