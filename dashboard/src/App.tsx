@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React from "react";
+import { Navigate, BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EventsPage } from "./pages/EventsPage";
@@ -7,8 +8,15 @@ import { AgentsPage } from "./pages/AgentsPage";
 import { RulesPage } from "./pages/RulesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { GuidePage } from "./pages/GuidePage";
+import { LoginPage } from "./pages/LoginPage";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { useWebSocketProvider, WebSocketProvider } from "./hooks/useWebSocket";
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  return localStorage.getItem("homesoc_token")
+    ? <>{children}</>
+    : <Navigate to="/login" replace />;
+}
 
 function AppInner() {
   const wsState = useWebSocketProvider();
@@ -17,7 +25,12 @@ function AppInner() {
     <WebSocketProvider value={wsState}>
       <BrowserRouter>
         <Routes>
-          <Route element={<Layout status={wsState.status} onToggle={wsState.toggle} />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={
+            <RequireAuth>
+              <Layout status={wsState.status} onToggle={wsState.toggle} />
+            </RequireAuth>
+          }>
             <Route index element={<DashboardPage />} />
             <Route path="/events" element={<EventsPage />} />
             <Route path="/alerts" element={<AlertsPage />} />

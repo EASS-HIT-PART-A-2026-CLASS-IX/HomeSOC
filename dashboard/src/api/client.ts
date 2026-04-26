@@ -17,6 +17,11 @@ async function request<T>(path: string, options?: RequestInit, signal?: AbortSig
       ...(options?.headers as Record<string, string> | undefined),
     },
   });
+  if (res.status === 401) {
+    localStorage.removeItem("homesoc_token");
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }

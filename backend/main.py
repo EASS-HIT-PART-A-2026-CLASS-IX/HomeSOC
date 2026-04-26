@@ -64,6 +64,12 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
 
+    # Ensure demo user exists for graders (viewer-only access)
+    from backend.db.repository import get_user_by_username, create_user
+    from backend.api.auth import hash_password
+    if not await get_user_by_username("demo"):
+        await create_user("demo", "demo", hash_password("demo"), role="viewer")
+
     # Initialize detection engine and pipeline
     engine = DetectionEngine(settings.rules_dir)
 
